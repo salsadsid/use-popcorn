@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const tempMovieData = [
   {
@@ -46,9 +46,109 @@ const tempWatchedData = [
     userRating: 9,
   },
 ];
-
+const apiKey = "c4f25ff0";
+const api = `http://www.omdbapi.com/?apikey=${apiKey}&s=Inception`;
 const average = (arr) =>
   arr.reduce((acc, cur, i, arr) => acc + cur / arr.length, 0);
+
+function Loader() {
+  return <p className="loader">Loading ... </p>;
+}
+
+function ErrorMessage({ message }) {
+  return (
+    <p className="error">
+      <span>⛔</span> {message}
+    </p>
+  );
+}
+export default function App() {
+  const [query, setQuery] = useState("interception");
+  const [movies, setMovies] = useState([]);
+  const [watched, setWatched] = useState(tempWatchedData);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  /*
+  useEffect(function () {
+    console.log("After initial render");
+  }, []);
+
+  useEffect(function () {
+    console.log("After every render");
+  });
+
+  useEffect(
+    function () {
+      console.log("D");
+    },
+    [query]
+  );
+
+  console.log("During render");
+*/
+  useEffect(
+    function () {
+      async function fetchData() {
+        try {
+          setLoading(true);
+          setError("");
+          const res = await fetch(
+            `https://www.omdbapi.com/?apikey=c4f25ff0&s=${query}`
+          );
+          if (!res.ok) throw new Error("Something went wrong");
+          const data = await res.json();
+          if (data.Response === "False") throw new Error("Movies not found");
+          setMovies(data.Search);
+        } catch (error) {
+          console.log(error.message);
+          setError(error.message);
+        } finally {
+          setLoading(false);
+        }
+      }
+
+      if (query.length < 3) {
+        setMovies([]);
+        setError("");
+        return;
+      }
+      fetchData();
+    },
+    [query]
+  );
+  return (
+    <>
+      <NavBar>
+        <Search query={query} setQuery={setQuery} />
+        <NumResults movies={movies} />
+      </NavBar>
+      <Main>
+        {/* 
+          We can do this in that way by element as props
+          
+          <Box element={<MovieList movies={movies} />} />
+          <Box
+            element={
+              <>
+                <WatchedSummary watched={watched} />
+                <WatchedMoviesList watched={watched} />
+              </>
+            }
+          /> */}
+        <Box>
+          {/* {loading ? <Loader /> : <MovieList movies={movies} />} */}
+          {loading && <Loader />}
+          {!loading && !error && <MovieList movies={movies} />}
+          {error && <ErrorMessage message={error} />}
+        </Box>
+        <Box>
+          <WatchedSummary watched={watched} />
+          <WatchedMoviesList watched={watched} />
+        </Box>
+      </Main>
+    </>
+  );
+}
 
 function NavBar({ children }) {
   return (
@@ -66,8 +166,7 @@ function Logo() {
     </div>
   );
 }
-function Search() {
-  const [query, setQuery] = useState("");
+function Search({ query, setQuery }) {
   return (
     <input
       className="search"
@@ -208,38 +307,5 @@ function WatchMovie({ movie }) {
         </p>
       </div>
     </li>
-  );
-}
-export default function App() {
-  const [movies, setMovies] = useState(tempMovieData);
-  const [watched, setWatched] = useState(tempWatchedData);
-  return (
-    <>
-      <NavBar>
-        <Search />
-        <NumResults movies={movies} />
-      </NavBar>
-      <Main>
-        {/* 
-        We can do this in that way by element as props
-        
-        <Box element={<MovieList movies={movies} />} />
-        <Box
-          element={
-            <>
-              <WatchedSummary watched={watched} />
-              <WatchedMoviesList watched={watched} />
-            </>
-          }
-        /> */}
-        <Box>
-          <MovieList movies={movies} />
-        </Box>
-        <Box>
-          <WatchedSummary watched={watched} />
-          <WatchedMoviesList watched={watched} />
-        </Box>
-      </Main>
-    </>
   );
 }
