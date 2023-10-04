@@ -106,22 +106,31 @@ export default function App() {
   function handleDeleteWatched(id) {
     setWatched((watched) => watched.filter((w) => w.imdbID !== id));
   }
+
   useEffect(
     function () {
+      const controller = new AbortController();
       async function fetchData() {
         try {
           setLoading(true);
           setError("");
           const res = await fetch(
-            `https://www.omdbapi.com/?apikey=c4f25ff0&s=${query}`
+            `https://www.omdbapi.com/?apikey=c4f25ff0&s=${query}`,
+            {
+              signal: controller.signal,
+            }
           );
+          // console.log(res);
           if (!res.ok) throw new Error("Something went wrong");
           const data = await res.json();
           if (data.Response === "False") throw new Error("Movies not found");
           setMovies(data.Search);
+          setError("");
         } catch (error) {
           console.log(error.message);
-          setError(error.message);
+          if (error.name !== "AbortError") {
+            setError(error.message);
+          }
         } finally {
           setLoading(false);
         }
@@ -133,6 +142,10 @@ export default function App() {
         return;
       }
       fetchData();
+
+      return function () {
+        controller.abort();
+      };
     },
     [query]
   );
@@ -223,6 +236,22 @@ function MovieDetails({ selectedId, onCloseMovie, onAddWatched, watched }) {
   }
   useEffect(
     function () {
+      const callback = function (e) {
+        if (e.code === "Escape") {
+          onCloseMovie();
+          console.log("CLOSING");
+        }
+      };
+      document.addEventListener("keydown", callback);
+
+      return function () {
+        document.removeEventListener("keydown", callback);
+      };
+    },
+    [onCloseMovie]
+  );
+  useEffect(
+    function () {
       async function getMovieDetails() {
         setIsLoading(true);
         const res = await fetch(
@@ -237,6 +266,19 @@ function MovieDetails({ selectedId, onCloseMovie, onAddWatched, watched }) {
       getMovieDetails();
     },
     [selectedId]
+  );
+
+  useEffect(
+    function () {
+      if (!title) return;
+      document.title = `Movie: ${title}`;
+
+      return function () {
+        document.title = "usePopcorn";
+        console.log(`Clean up effect for movie ${title}`);
+      };
+    },
+    [title]
   );
   return (
     <div className="details">
